@@ -1,5 +1,6 @@
 import json
 from dataclasses import dataclass, field
+from typing import Optional
 
 
 class MarcException(Exception):
@@ -73,7 +74,7 @@ class MarcField:
                  has_indicators: bool = True,
                  indicators: str = '  ',
                  data: str = '  ',
-                 subfields: list[SubField] = []) -> object:
+                 subfields: list[SubField] = None) -> object:
         self.tag = tag
         self.type = type
         self.repeatable = repeatable
@@ -85,7 +86,7 @@ class MarcField:
         elif self.type == 'd':
             self.has_indicators = has_indicators
             self.indicators = indicators
-            self.subfields = subfields
+            self.subfields = []
         else:
             raise MarcException('Field \'%s\' has unknown type \'%s\'' % (tag, type))
 
@@ -3476,7 +3477,7 @@ class DField(BaseField):
 
     def addSubField(self, tag: str, value: str):
         repeatable: bool = True
-        new_sf: SubField = None
+        new_sf: Optional[SubField] = None
 
         for mf in FIELDS:
             if mf.tag == self.tag:
