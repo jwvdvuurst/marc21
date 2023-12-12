@@ -3077,8 +3077,6 @@ class MarcDictionary:
         Args:
             field (MarcField): The field to be added.
         """
-        if field is None:
-            return
         self._FIELDS.append(field)
 
     def add_additional_fields_to_list(self, fields: list[MarcField]) -> None:
@@ -3091,7 +3089,7 @@ class MarcDictionary:
         Returns:
             None
         """
-        if fields is None or len(fields) == 0:
+        if len(fields) == 0:
             return
         for field in fields:
             self.add_field_to_list(field)
@@ -3132,14 +3130,14 @@ class MarcDictionary:
             if mf.type == 'd':
                 for sf in mf.get_subfields():
                     if sf.tag == subfield.tag:
-                        return
+                        raise MarcException('Field \'%s\' of type \'%s\' already contains subfield \'%s\'' % (tag, mf.type, subfield.tag))
 
                 mf.add_SubField(new_sf=subfield)
                 # mf.subfields.append(subfield)
             else:
                 raise MarcException('Field \'%s\' of type \'%s\' does not support subfields' % (tag, mf.type))
 
-    def get_dictionary(self, verbose: bool = False) -> str:
+    def get_dictionary(self, verbose: bool = False, show_tag: str='') -> str:
         """
         Returns a JSON string representation of a dictionary.
 
@@ -3150,7 +3148,13 @@ class MarcDictionary:
             str: JSON string representation of the dictionary.
         """
         data = []
-        tags: list[str] = self.get_field_tags()
+        tags: list[str] = []
+
+        if show_tag != '':
+            if show_tag in self.get_field_tags():
+                tags.append(show_tag)
+        else:
+            tags: list[str] = self.get_field_tags()
 
         tags.sort()
 
@@ -3188,6 +3192,8 @@ class MarcDictionary:
                 else:
                     f.type = 'c'
 
+                break
+
     def switch_repeatability_of_field(self, tag: str):
         for f in self._FIELDS:
             if f.tag == tag:
@@ -3203,7 +3209,7 @@ class MarcDictionary:
 
         return valid
 
-    def get_valid_subfields_for_field(self, tag: str):
+    def get_valid_subfields_for_field(self, tag: str) -> list[SubField]:
         subfields = []
         for f in self._FIELDS:
             if f.tag == tag and f.type == 'd':

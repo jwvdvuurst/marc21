@@ -1,8 +1,9 @@
+import json
 from dataclasses import dataclass, field
 from typing import Optional
-from marc21.lib.marcException import MarcException
-from marc21.lib.marcFields import SubField, MarcField
-from marc21.lib.marcDictionary import MarcDictionary
+from lib.marcException import MarcException
+from lib.marcFields import SubField, MarcField
+from lib.marcDictionary import MarcDictionary
 
 marc_dict = MarcDictionary()
 
@@ -26,8 +27,8 @@ def switch_repeatability_of_field(tag: str):
     marc_dict.switch_repeatability_of_field(tag)
 
 
-def get_dictionary(verbose: bool = False):
-    return marc_dict.get_dictionary(verbose)
+def get_dictionary(verbose: bool = False, tag:str = ''):
+    return marc_dict.get_dictionary(verbose, show_tag=tag)
 
 
 @dataclass(init=False, eq=True, order=True)
@@ -77,7 +78,6 @@ class CField(BaseField):
 
     def __del__(self):
         super().__del__()
-        del self.data
 
     def __repr__(self, show_description: bool = False) -> str:
         msg: list[str] = []
@@ -90,6 +90,12 @@ class CField(BaseField):
         msg.append(self.data)
 
         return self.field_separator.join(msg)
+
+    def __json__(self):
+        return {
+            'tag': self.tag,
+            'data': self.data
+        }
 
 
 @dataclass(eq=True, order=True)
@@ -113,10 +119,7 @@ class DField(BaseField):
 
     def __del__(self):
         super().__del__()
-        del self.indicators
-        for sf in self.subfields:
-            del sf
-        del self.subfields
+
 
     def __repr__(self, show_description: bool = False) -> str:
         msg: list[str] = []
@@ -158,6 +161,14 @@ class DField(BaseField):
 
         return self
 
+    def __json__(self):
+        return {
+            'tag': self.tag,
+            'description': self.description,
+            'indicators': self.indicators,
+            'subfields': [sf.__json__() for sf in self.subfields]
+        }
+
 
 @dataclass
 class MarcDto:
@@ -189,10 +200,26 @@ class MarcDto:
     def __len__(self) -> int:
         return len(self._cfields) + len(self._dfields)
 
+    def __json__(self):
+        list = []
+        for cf in self._cfields:
+            list.append(cf.__json__())
+        for df in self._dfields:
+            list.append(df.__json__())
+
+        list.sort(key=lambda x: x['tag'])
+
+        return json.dumps(list)
 
     def set_separators(self, record_separator: str, field_separator: str):
         self._record_separator = record_separator
         self._field_separator = field_separator
+
+        for cf in self._cfields:
+            cf.set_separators(record_separator, field_separator)
+        for df in self._dfields:
+            df.set_separators(record_separator, field_separator)
+
 
     def as_list(self, show_description: bool = False) -> list[str]:
         msg: list[str] = [f.__repr__(show_description) for f in self._cfields] + [f.__repr__(show_description) for f in

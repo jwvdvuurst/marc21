@@ -46,3 +46,21 @@ class TestMarcException:
 
         assert str(e.value) == reason
 
+    def test_raise_instance_without_reason_string(self):
+        # Given
+        reason = ''
+
+        # When, Then
+        with pytest.raises(MarcException) as e:
+            raise MarcException(reason)
+
+    def test_representation_of_instance(self):
+        # Given
+        reason = 'Invalid tag encountered'
+
+        # When
+        exception = MarcException(reason)
+
+        # Then
+        assert repr(exception) == f"MarcException: {reason}"
+

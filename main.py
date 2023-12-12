@@ -47,6 +47,11 @@ def main():
     # print(dto.set_separators(record_separator=chr(30), field_separator=chr(31)))
     print(dto.__repr__(True))
 
+    dto.set_separators(record_separator=chr(30), field_separator=chr(31))
+    print(dto)
+
+    # print(get_dictionary(True, '871'))
+
     #
     # mf = MarcField(tag='905', type='d', repeatable=False, description='Address')
     # sf = SubField(tag='a', repeatable=False, description='country')

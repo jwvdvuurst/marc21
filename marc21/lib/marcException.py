@@ -5,7 +5,7 @@ class MarcException(Exception):
     reason: str
 
     def __init__(self, reason: str):
-        if str == '':
+        if reason == '':
             self.reason = 'Unknown reason'
         else:
             self.reason = reason

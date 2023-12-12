@@ -1,7 +1,7 @@
 
 import pytest
 
-from marc21 import MarcDto, MarcException, CField, DField, SubField
+from marc21 import MarcDto, MarcException, CField, DField, SubField, MarcField, add_field_to_list, get_dictionary, add_additional_fields_to_list
 
 
 class TestMarcDto:
@@ -147,4 +147,44 @@ class TestMarcDto:
         assert len(marc_dto._cfields) == 2
         assert marc_dto._cfields[0].tag == tag_present
         assert marc_dto._cfields[1].tag == tag_remove
+
+    def test_add_field_to_dictionary(self):
+        tag='900'
+
+        fielddef = get_dictionary(tag=tag)
+
+        assert fielddef == '[]'
+
+        mf = MarcField(tag=tag, fieldtype='d', description='Description', indicators='12', subfields=[])
+
+        add_field_to_list(mf)
+
+        fielddef = get_dictionary(tag=tag)
+
+        assert fielddef != '[]'
+
+    def test_add_multiple_fields_to_dictionary(self):
+        tags=['901', '902']
+
+        for tag in tags:
+            fielddef = get_dictionary(tag=tag)
+
+            assert fielddef == '[]'
+
+        fields = []
+
+        for tag in tags:
+            mf = MarcField(tag=tag, fieldtype='d', description='Description', indicators='12', subfields=[])
+            fields.append(mf)
+
+        add_additional_fields_to_list(fields)
+
+        for tag in tags:
+            fielddef = get_dictionary(tag=tag)
+
+            assert fielddef != '[]'
+
+
+
+
 

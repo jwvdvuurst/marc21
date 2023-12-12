@@ -5,7 +5,7 @@ import json
 
 import pytest
 
-from marc21 import get_dictionary
+from marc21 import get_dictionary, MarcDictionary, MarcField, SubField, MarcException
 
 
 class TestGetDictionary:
@@ -24,3 +24,223 @@ class TestGetDictionary:
             json.loads(result)
         except ValueError as e:
             pytest.fail(f"Unexpected exception raised: {e}")
+
+    def test_returns_json_string_representation_with_descriptions(self):
+        # Given
+
+        # When
+        result = get_dictionary(verbose=True)
+
+        # Then
+        assert result != ''
+
+        try:
+            js = json.loads(result)
+
+            for field in js:
+                field_keys = field.keys()
+                assert 'description' in field_keys
+
+
+        except ValueError as e:
+            pytest.fail(f"Unexpected exception raised: {e}")
+
+
+    def test_returns_json_string_for_specific_tag(self):
+        # Given
+
+        # When
+        result = get_dictionary(tag='001')
+
+        # Then
+        assert result != ''
+
+        try:
+            json.loads(result)
+        except ValueError as e:
+            pytest.fail(f"Unexpected exception raised: {e}")
+
+    def test_returns_empty_json_for_nonexisting_tag(self):
+        # Given
+
+        # When
+        result = get_dictionary(tag='999')
+
+        # Then
+        assert result == '[]'
+
+    def test_add_new_field_to_list(self):
+        tag = '900'
+        description = 'Test Field'
+        field_type = 'd'
+        repeatable = True
+        subtag='a'
+        subdescription='Test SubField'
+        subrepeatable=False
+        subvalue='Can we see this?'
+
+        md = MarcDictionary()
+        # First check field '900' does not exist in the list
+
+        field = md.find_definition_for_field(tag=tag)
+
+        assert field is None
+
+        md.add_field_to_list(MarcField(tag=tag,
+                                       description=description,
+                                       fieldtype=field_type,
+                                       repeatable=repeatable,
+                                       subfields=[SubField(tag=subtag,
+                                                           description=subdescription,
+                                                           repeatable=subrepeatable,
+                                                           value=subvalue)]))
+
+        field = md.find_definition_for_field(tag=tag)
+
+        assert field is not None
+        assert field.tag == tag
+        assert field.description == description
+        assert field.type == field_type
+        assert field.repeatable == repeatable
+        assert len(field.subfields) == 1
+
+    def test_list_valid_subfields_for_tag(self):
+        tag = '020'
+        expected_subfields=['a', 'c', 'q', 'z', '6', '8']
+
+        md = MarcDictionary()
+
+        subfields = md.get_valid_subfields_for_field(tag=tag)
+
+        assert len(subfields) > 0
+
+        for sf in subfields:
+            assert sf.tag in expected_subfields
+
+    def test_add_multiple_fields_to_list(self):
+        tags = ['001', '010', '100']
+        new_tags = []
+        fields: list[MarcField] = []
+
+        md = MarcDictionary()
+
+        for tag in tags:
+            fields.append(md.get_field_by_tag(tag=tag, copy=True))
+
+        # retag fields
+
+        new_tag=900
+
+        for mf in fields:
+            mf.tag = str(new_tag)
+            new_tags.append(str(new_tag))
+            new_tag += 1
+
+        md.add_additional_fields_to_list(fields)
+
+        for tag in new_tags:
+            assert md.find_definition_for_field(tag=tag)
+
+    def test_add_no_new_fields_to_list(self):
+        fields: list[MarcField] = []
+
+        md = MarcDictionary()
+
+        md.add_additional_fields_to_list(fields)
+
+    def test_add_additional_subfield_to_field_in_list(self):
+        tag = '020'
+        new_subfield = SubField(tag='b', description='Test SubField', repeatable=True, value='Can we see this?')
+
+        md = MarcDictionary()
+
+        subfields = md.get_valid_subfields_for_field(tag=tag)
+
+        assert len(subfields) > 0
+
+        sfl = len(subfields)
+
+        for sf in subfields:
+            assert sf.tag != new_subfield.tag
+
+        md.add_additional_subfield_to_field_in_list(tag=tag, subfield=new_subfield)
+
+        subfields = md.get_valid_subfields_for_field(tag=tag)
+
+        assert len(subfields) > 0
+        assert len(subfields) == sfl + 1
+
+    def test_add_existing_subfield_to_field_in_list(self):
+        tag = '020'
+
+        md = MarcDictionary()
+
+        subfields = md.get_valid_subfields_for_field(tag=tag)
+
+        assert len(subfields) > 0
+
+        sfl = len(subfields)
+
+        new_subfield = subfields[0].__copy__()
+
+        with pytest.raises(MarcException):
+            md.add_additional_subfield_to_field_in_list(tag=tag, subfield=new_subfield)
+
+        subfields = md.get_valid_subfields_for_field(tag=tag)
+
+        assert len(subfields) > 0
+        assert len(subfields) == sfl
+
+    def test_add_subfield_to_control_field_in_list(self):
+        tag = '001'
+
+        md = MarcDictionary()
+
+        subfields = md.get_valid_subfields_for_field(tag=tag)
+
+        assert len(subfields) == 0
+
+        new_subfield = SubField(tag='a', description='Test SubField', repeatable=True, value='Can we see this?')
+
+        with pytest.raises(MarcException):
+            md.add_additional_subfield_to_field_in_list(tag=tag, subfield=new_subfield)
+
+    def test_add_subfield_to_switched_control_field_in_list(self):
+        tag = '001'
+
+        md = MarcDictionary()
+
+        subfields = md.get_valid_subfields_for_field(tag=tag)
+
+        assert len(subfields) == 0
+
+        new_subfield = SubField(tag='a', description='Test SubField', repeatable=True, value='Can we see this?')
+
+        with pytest.raises(MarcException):
+            md.add_additional_subfield_to_field_in_list(tag=tag, subfield=new_subfield)
+
+        md.switch_type_of_field(tag=tag)
+
+        md.add_additional_subfield_to_field_in_list(tag=tag, subfield=new_subfield)
+
+        subfields = md.get_valid_subfields_for_field(tag=tag)
+
+        assert len(subfields) == 1
+
+        md.switch_type_of_field(tag=tag)
+
+    def test_switch_repeatability_of_field(self):
+        tag = '100'
+
+        md = MarcDictionary()
+
+        field = md.get_field_by_tag(tag=tag, copy=True)
+
+        assert field is not None
+        assert field.repeatable is False
+
+        md.switch_repeatability_of_field(tag=tag)
+
+        field = md.get_field_by_tag(tag=tag, copy=True)
+
+        assert field.repeatable is True

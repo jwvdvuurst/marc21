@@ -12,7 +12,7 @@ class TestMarcField:
         description = 'Title Statement'
     
         # When
-        field = MarcField(tag=tag, type=field_type, repeatable=repeatable, description=description)
+        field = MarcField(tag=tag, fieldtype=field_type, repeatable=repeatable, description=description)
 
         # Then
         assert field.tag == tag
@@ -30,7 +30,7 @@ class TestMarcField:
         field_type = 'd'
         repeatable = True
         description = 'Title Statement'
-        field = MarcField(tag=tag, type=field_type, repeatable=repeatable, description=description)
+        field = MarcField(tag=tag, fieldtype=field_type, repeatable=repeatable, description=description)
     
         subfield_tag = 'a'
         subfield_repeatable = False
@@ -54,7 +54,7 @@ class TestMarcField:
         field_type = 'd'
         repeatable = True
         description = 'Title Statement'
-        field = MarcField(tag=tag, type=field_type, repeatable=repeatable, description=description)
+        field = MarcField(tag=tag, fieldtype=field_type, repeatable=repeatable, description=description)
     
         indicators = '10'
     
@@ -73,7 +73,7 @@ class TestMarcField:
         field_type = 'd'
         repeatable = True
         description = 'Title Statement'
-        field = MarcField(tag=tag, type=field_type, repeatable=repeatable, description=description)
+        field = MarcField(tag=tag, fieldtype=field_type, repeatable=repeatable, description=description)
     
         subfield_tag = 'a'
         subfield_repeatable = False
@@ -98,7 +98,7 @@ class TestMarcField:
         description = 'Title Statement'
     
         # When
-        field = MarcField(tag=tag, type=field_type, repeatable=repeatable, description=description)
+        field = MarcField(tag=tag, fieldtype=field_type, repeatable=repeatable, description=description)
     
         # Then
         assert field.repeatable is True
@@ -308,7 +308,7 @@ class TestMarcField:
         field_type = 'd'
         repeatable = True
         description = 'Title Statement'
-        field = MarcField(tag=tag, type=field_type, repeatable=repeatable, description=description)
+        field = MarcField(tag=tag, fieldtype=field_type, repeatable=repeatable, description=description)
 
         # When
         subfield_tag = 'a'
@@ -331,7 +331,7 @@ class TestMarcField:
         field_type = 'd'
         repeatable = True
         description = 'Title Statement'
-        field = MarcField(tag=tag, type=field_type, repeatable=repeatable, description=description)
+        field = MarcField(tag=tag, fieldtype=field_type, repeatable=repeatable, description=description)
 
         # When
         subfield1_tag = 'a'
@@ -363,7 +363,7 @@ class TestMarcField:
         field_type = 'd'
         repeatable = True
         description = 'Title Statement'
-        field = MarcField(tag=tag, type=field_type, repeatable=repeatable, description=description)
+        field = MarcField(tag=tag, fieldtype=field_type, repeatable=repeatable, description=description)
 
         # When
         subfield1_tag = 'a'

@@ -4,7 +4,6 @@ from typing import Optional
 # local imports
 from .marcException import MarcException
 
-
 @dataclass(init=False, eq=True, order=True)
 class SubField:
     """
@@ -36,11 +35,12 @@ class SubField:
     def __copy__(self):
         return SubField(self.tag, self.repeatable, self.description, self.value)
 
-    def __del__(self):
-        del self.tag
-        del self.repeatable
-        del self.description
-        del self.value
+    def __json__(self):
+        return {
+            'tag': self.tag,
+            'description': self.description,
+            'value': self.value
+        }
 
 
 @dataclass(init=False)
@@ -69,8 +69,9 @@ class MarcField:
         self.data = data
         self.indicators = indicators
         self.subfields = []
-        for sf in subfields:
-            self.subfields.append(sf)
+        if subfields is not None:
+            for sf in subfields:
+                self.subfields.append(sf)
 
         if self.type == 'c':
             self.has_indicators = False
@@ -92,7 +93,6 @@ class MarcField:
         del self.type
         del self.repeatable
         del self.description
-        del self.has_indicators
 
     def __copy__(self):
         mf = MarcField(self.tag,
@@ -112,6 +112,14 @@ class MarcField:
             mf.subfields = [sf.__copy__() for sf in self.subfields]
 
         return mf
+
+    def __json__(self):
+        return {
+            'tag': self.tag,
+            'description': self.description,
+            'indicators': self.indicators,
+            'subfields': [sf.__json__() for sf in self.subfields]
+        }
 
     def add_SubField(self, new_sf: SubField =None, tag: str ='', repeatable: bool =False, description :str =''):
         """
