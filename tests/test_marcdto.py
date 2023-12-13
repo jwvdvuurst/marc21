@@ -1,7 +1,7 @@
 
 import pytest
 
-from marc21 import MarcDto, MarcException, CField, DField, SubField, MarcField, add_field_to_list, get_dictionary, add_additional_fields_to_list
+from marc21 import MarcDto, MarcException, CField, DField, SubField, MarcField, add_field_to_list, get_dictionary, add_additional_fields_to_list, MarcDictionary
 
 
 class TestMarcDto:
@@ -184,7 +184,175 @@ class TestMarcDto:
 
             assert fielddef != '[]'
 
+    def test_field_filtering(self):
+        dto = MarcDto()
+        md = MarcDictionary()
+
+        tags=md.get_field_tags()
+        even_tags = [tag for tag in tags if int(tag) % 2 == 0]
+        odd_tags = [tag for tag in tags if int(tag) % 2 != 0]
+
+        for tag in tags:
+            field = dto.create_field(tag=tag, data=tag)
+
+            if field.field_type == 'd':
+                try:
+                    field.addSubField('a', 'subfield for %s' % tag)
+                except MarcException as m:
+                    print(m)
+
+            dto.insert_field(field)
+
+        assert len(dto) > 0
+        dto_len = len(dto)
+
+        for tag in even_tags:
+            if len(odd_tags) > 0:
+                dto.perform_filter(tag, odd_tags.pop(0))
+            else:
+                dto.perform_filter(tag, tag)
+
+        for tag in odd_tags:
+            if len(even_tags) > 0:
+                dto.perform_filter(tag, even_tags.pop(0))
+            else:
+                dto.perform_filter(tag, tag)
+
+        dto.perform_filter(even_tags[0], '')
+        dto.perform_filter('', even_tags[0])
+
+        assert len(dto) < dto_len
+
+    def test_dto_as_list(self):
+        dto = MarcDto()
+        md = MarcDictionary()
+
+        tags=md.get_field_tags()
+
+        for tag in tags:
+            field = dto.create_field(tag=tag, data=tag)
+
+            if field.field_type == 'd':
+                subfields = md.get_valid_subfields_for_field(tag=tag)
+
+                for sf in subfields:
+                    field.addSubField(sf.tag, 'subfield %s for field %s' % (sf.tag, tag))
+
+            dto.insert_field(field)
+
+        dto_list = dto.as_list()
+        dto_json = dto.__json__()
+
+        assert len(dto_list) > 0
+        assert len(dto_json) > 0
+
+    def test_set_separators(self):
+        dto = MarcDto()
+        md = MarcDictionary()
+
+        tags = md.get_field_tags()
+
+        tags = [tag for tag in tags if int(tag) % 5 == 0]
+
+        for tag in tags:
+            field = dto.create_field(tag=tag, data=tag)
+
+            if field.field_type == 'd':
+                subfields = md.get_valid_subfields_for_field(tag=tag)
+
+                for sf in subfields:
+                    field.addSubField(sf.tag, 'subfield %s for field %s' % (sf.tag, tag))
+
+            dto.insert_field(field)
+
+        json1 = repr(dto)
+
+        dto.set_separators('^_', '^^')
+
+        json2 = repr(dto)
+
+        dto.set_separators('field: ', 'subfield: ')
+
+        json3 = repr(dto)
+
+        dto.set_separators( '', '')
+
+        json4 = repr(dto)
+
+        assert len(json1) > 0
+        assert len(json2) > 0
+
+        assert json1 != json2
+
+        assert len(json3) > 0
+
+        assert json3 != json2
+
+        assert len(json4) > 0
+
+        assert json3 == json4
+
+    def test_dto_representation(self):
+        dto = MarcDto()
+        md = MarcDictionary()
+
+        tags = md.get_field_tags()
+        tags = [tag for tag in tags if int(tag) % 7 == 0]
+
+        for tag in tags:
+            field = dto.create_field(tag=tag, data=tag)
+
+            if field.field_type == 'd':
+                subfields = md.get_valid_subfields_for_field(tag=tag)
+
+                for sf in subfields:
+                    field.addSubField(sf.tag, 'subfield %s for field %s' % (sf.tag, tag))
+
+            dto.insert_field(field)
+
+        json1 = dto.__repr__()
+        json2 = dto.__repr__(True)
+
+        assert len(json1) > 0
+        assert len(json2) > 0
+        assert json1 != json2
+
+    def test_direct_DField_creation(self):
+        tag = '027'
+        df = DField(tag=tag, description='test', indicators='><', subfields=[])
+        df.addSubField(tag='q', value='?')
+
+        assert df.field_type == 'd'
+        assert df.tag == tag
+
+    def test_direct_invalid_DField_creation(self):
+        with pytest.raises(MarcException):
+            df = DField(tag='', description='test', indicators='><', subfields=[])
+            df.addSubField(tag='q', value='?')
+
+    def test_direct_DField_creation_with_CField_tag(self):
+        tag = '003'
+
+        with pytest.raises(MarcException):
+            df = DField(tag=tag, description='test', indicators='<>', subfields=[])
 
 
+    def test_direct_CField_creation(self):
+        tag='003'
+
+        cf = CField(tag=tag, description='test', data='?')
+
+        assert cf.field_type == 'c'
+        assert cf.tag == tag
+
+    def test_direct_CField_creation_with_DField_tag(self):
+        tag='027'
+
+        with pytest.raises(MarcException):
+            cf = CField(tag=tag, description='test', data='?')
+
+    def test_direct_invalid_CField_creation(self):
+        with pytest.raises(MarcException):
+            cf = CField(tag='', description='test', data='?')
 
 

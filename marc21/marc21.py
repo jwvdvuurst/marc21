@@ -1,9 +1,9 @@
 import json
 from dataclasses import dataclass, field
 from typing import Optional
-from lib.marcException import MarcException
-from lib.marcFields import SubField, MarcField
-from lib.marcDictionary import MarcDictionary
+from marc21.lib.marcException import MarcException
+from marc21.lib.marcFields import SubField, MarcField
+from marc21.lib.marcDictionary import MarcDictionary
 
 marc_dict = MarcDictionary()
 
@@ -201,17 +201,20 @@ class MarcDto:
         return len(self._cfields) + len(self._dfields)
 
     def __json__(self):
-        list = []
+        jslist = []
         for cf in self._cfields:
-            list.append(cf.__json__())
+            jslist.append(cf.__json__())
         for df in self._dfields:
-            list.append(df.__json__())
+            jslist.append(df.__json__())
 
-        list.sort(key=lambda x: x['tag'])
+        jslist.sort(key=lambda x: x['tag'])
 
-        return json.dumps(list)
+        return json.dumps(jslist)
 
     def set_separators(self, record_separator: str, field_separator: str):
+        if record_separator == '' or field_separator == '':
+            return
+
         self._record_separator = record_separator
         self._field_separator = field_separator
 
