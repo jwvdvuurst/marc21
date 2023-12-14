@@ -80,7 +80,7 @@ In order to change the default record-separator (^^) and field-seperator (^_), o
 call set_separators before printing the MarcDto instance
 
 ```
-dto.set_separators(record_separator='  ', field_separator=' $')
+dto.set_separators(field_separator='  ', subfield_separator=' $')
 
 print(dto)
 ```
@@ -140,7 +140,235 @@ A **MarcException** is raised when:
 - You try to add a non-repeatable field more than once
 - You try to add a non-defined field (not in dictionary)
 
+## API
 
+### Overview classes
+- MarcDto           : marc data transfer object, holds up to 1 record at a time
+- CField            : internal definition of a control field
+- DField            : internal definition of a data field
+- BaseField         : internal base class for CField and DField
+- MarcField         : external definition of a field in a marc record (can be a CField or DField)
+- SubField          : external definition of a subfield for MarcField of type 'd' (DField)
+- MarcDictionary    : internal dictionary containing the definition of the marc fields
+- MarcException     : custom exception (see section Exceptions above)
+
+#### MarcDto
+
+- **MarcDto**()
+
+  initializes a new record
+  
+- __repr__([show_description:bool = False])
+
+  When show_description is supplied as True, the fields and subfields will contain the description of these fields
+
+- __len__([count_characters:bool = False])
+
+  if count_characters is omitted or supplied as False this method returns the number of fields in the record
+  otherwise is returns the total number of characters in the fields
+
+- __json__()
+
+  returns json representation of the record
+  
+  ```json
+  [
+	{
+		'tag': <tag>,
+		'...': ''
+	},
+	{
+		'tag': <tag>,
+		'...': ''
+	},
+	...
+  ]
+  ```
+	
+- **set_separators**(field_separator: str, subfield_separator:str)
+
+  if both the field_separator and subfield_separator are non-empty strings the supplied separators will be used within the representation of the record
+  
+  <field_separator><tag><data>		for control fields
+  <field_separator><tag><indicators>[<subfield_separator><tag><value>]+
+  
+- **create_field**(tag: str, [indicators: str = ''], [data: str = ''], [subfields = None]) -> CField | DField
+
+  prepares a new field for the current record (**but does not insert it yet**)
+  if tag does not point to an existing field definition in the MarcDictionary, a MarcException is raised.
+  depending on the field definition:
+  - the field created is a control field (CField) or data field (DField).
+  - if is checked whether a field if repeatable or not (and whether it is already present in the current record)
+  
+  Depending on the type of the created field:
+  - control field (CField): the data argument is used
+  - data field (DField): the indicators and subfields are used
+  
+  returns the prepared field
+  
+- **insert_field**(marc_field: CField | DField)
+
+  inserts the field to the current record if the field is not an exact duplicate of a field already present in the record
+  
+- **is_tag_present**(tag:str)
+
+  returns true if at least one field with the supplied tag is present in the current record
+  
+- **perform_filter**(tag_present: str, tag_remove: str)
+
+  if at least one field with the supplied tag_present is present in the current record, fields with the supplied tag_remove will be removed from the current record
+  
+
+#### CField  (subclass of BaseField)
+
+- **CField**(tag: str, description: str, data: str)
+
+  Initializes a new control field (CField)
+  
+- __repr__([show_description: bool = False])
+
+  returns the contents of the field. The format depends on the value of show_description:
+	if show_description is False: <field_separator><tag><data>
+	if show_description is True : <field_separator><tag> [<description>] <data>
+  
+- __json__()
+
+  returns the json representation of the field as:
+  ```json
+  {
+     'tag': <tag>,
+	 'data': <data>
+  }
+  ```
+  
+#### DField  (subclass of BaseField)
+    
+- **DField**(tag:str, description: str, inidicators: str, subfields: list[SubField])
+
+  Initializes a new data field (DField)
+  
+- __repr__([show_description: bool = False])
+
+  returns the contents of the field. The format depends on the value of show_description:
+	if show_description is False: <field_separator><tag><indicators>[<subfield_separator><tag><value>]+
+	if show_description is True : <field_separator><tag> [<description>] <indicators>[<subfield_separator><tag><value>]+
+
+- __json__()
+
+  returns the json representation of the field as:
+  
+  ```json
+  {
+	  'tag': <tag>,
+	  'indicators': <indicators>
+	  'subfields': [
+	     {
+		    'tag': <tag>
+			'value': <value>
+		 },
+	     {
+		    'tag': <tag>
+			'value': <value>
+		 },
+         ...
+	  ]
+  }
+  ```
+  
+- **addSubField**(tag: str, value: str)
+
+  if tag does not refer to a subfield defined for current DField tag a MarcException is raised
+  if defined subfield is not repeatable and it is already in the subfield list for the DField a MarcException is raised
+  
+  a new SubField object is created and added to the list of subfields for the DField
+  
+
+#### MarcField
+
+This class is primarily used in the MarcDictionary and used to instantiate CField and DField objects
+
+- **MarcField**(tag: str, fieldtype: str, repeatable: bool = False, description: str = 'not supplied', has_indicators: bool = True, indicators: str = '  ', data: str = '  ', subfields: Optional[list[SubField]] = None)
+
+  initializes a new MarcField object
+
+  - fieldtype is 'c' for control field or 'd' for data field
+  - repeatable denotes whether more than 1 instance of this field can exist in a record
+  - has_indicators denotes whether the field uses indicators
+  
+  if fieldtype is not 'c' or 'd' a MarcException is raised
+  if fieldtype is 'c' has_indicators is set to False
+  
+- __json__()
+
+  returns a json representation of the MarcField
+  
+  depending on the fieldtype as
+  - 'c':
+  
+  ```json
+  {
+	'tag': <tag>,
+	'fieldtype': <fieldtype>,
+	'description': <description>
+  }
+  ```
+  - 'd':
+  ```json
+  {
+	'tag': <tag>,
+	'fieldtype': <fieldtype>,
+	'description': <description>,
+	'has_indicators': <has_indicators>,
+	'indicators': <indicators>,
+	'subfields': [
+	   [ { <subfield> } ]+
+	]
+  ```
+  
+- **add_SubField**([new_sf: SubField = None], [tag: str = ''], [repeatable: bool = False], [description: str = ''])
+
+  if both new_sf is None and tag is empty a MarcException is raised
+  
+  if new_sf is None, but tag is supplied a new SubField instance is created with the tag, repeatable and description
+  
+  if new_sf.repeatable is False, it is checked if no other instance of the subfield is already present in the list of subfields, otherwise a MarcException is raised.
+  
+  the new subfield is added to the list of subfields of the current MarcField.
+  
+- **is_subfield_present**(tag: str)
+
+  returns True if a subfield with the given tag is present in the list of subfields of the current MarcField
+  
+- **get_subfields**()
+
+  returns the list of subfields for t he current MarcField, if the fieldtype is 'd', otherwise an empty list.
+
+#### SubField
+
+- **SubField**([tag: str = ''], [repeatable: bool = True], [description: str = ''], [value: str = 'dummy'])
+
+  initializes a new SubField
+
+  if either tag or value is an empty string a MarcException is raised
+
+- __repr__([show_description: bool = False])
+
+  if show_description is False returns <tag><value>
+  otherwise returns <tag> [<description>] <value>
+  
+- __json__()
+
+  returns the json representation of the current subfield
+  
+  ```json
+  {
+	'tag': <tag>,
+	'description': <description>,
+	'value': <value>
+  }
+  ```
+  
+  
 ## Contributing
 
 Feel free to suggest improvements and/or open a pull request

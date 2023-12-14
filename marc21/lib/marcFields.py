@@ -114,12 +114,21 @@ class MarcField:
         return mf
 
     def __json__(self):
-        return {
-            'tag': self.tag,
-            'description': self.description,
-            'indicators': self.indicators,
-            'subfields': [sf.__json__() for sf in self.subfields]
-        }
+        if self.fieldtype == 'c':
+            return {
+                'tag': self.tag,
+                'fieldtype': self.fieldtype,
+                'description': self.description
+            }
+        else:
+            return {
+                'tag': self.tag,
+                'fieldtype': self.fieldtype,
+                'description': self.description,
+                'has_indicators': self.has_indicators,
+                'indicators': self.indicators,
+                'subfields': [sf.__json__() for sf in self.subfields]
+            }
 
     def add_SubField(self, new_sf: SubField =None, tag: str ='', repeatable: bool =False, description :str =''):
         """

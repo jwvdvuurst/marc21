@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='marc21',
-    version='0.3.4',
+    version='0.3.5',
     description='library to create bibliographic marc21 records',
     url='',
     author='John van der Vuurst',

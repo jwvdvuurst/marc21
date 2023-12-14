@@ -44,10 +44,10 @@ def main():
 
     # when the record is finished, it can be printed
 
-    # print(dto.set_separators(record_separator=chr(30), field_separator=chr(31)))
+    # print(dto.set_separators(subfield_separator=chr(30), subfield_separator=chr(31)))
     print(dto.__repr__(True))
 
-    dto.set_separators(record_separator=chr(30), field_separator=chr(31))
+    dto.set_separators(field_separator=chr(30), subfield_separator=chr(31))
     print(dto)
 
     # print(get_dictionary(True, '871'))

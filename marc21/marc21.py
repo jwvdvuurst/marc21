@@ -36,26 +36,26 @@ class BaseField:
     tag: str
     description: str
     field_type: str
-    record_separator: str
     field_separator: str
+    subfield_separator: str
 
     def __init__(self, tag: str, description: str, field_type: str):
         self.tag = tag
         self.description = description
         self.field_type = field_type
-        self.record_separator = '^^'
-        self.field_separator = '^_'
+        self.field_separator = '^^'
+        self.subfield_separator = '^_'
 
     def __del__(self):
         del self.tag
         del self.description
         del self.field_type
-        del self.record_separator
         del self.field_separator
+        del self.subfield_separator
 
-    def set_separators(self, record_separator: str, field_separator: str):
-        self.record_separator = record_separator
+    def set_separators(self, field_separator: str, subfield_separator: str):
         self.field_separator = field_separator
+        self.subfield_separator = subfield_separator
 
 
 # class for control fields (tag 000 - 009)
@@ -83,13 +83,13 @@ class CField(BaseField):
         msg: list[str] = []
 
         if show_description:
-            msg.append('%s%s [%s]' % (self.record_separator, self.tag, self.description))
+            msg.append('%s%s [%s]' % (self.field_separator, self.tag, self.description))
         else:
-            msg.append('%s%s' % (self.record_separator, self.tag))
+            msg.append('%s%s' % (self.field_separator, self.tag))
 
         msg.append(self.data)
 
-        return self.field_separator.join(msg)
+        return self.subfield_separator.join(msg)
 
     def __json__(self):
         return {
@@ -125,14 +125,14 @@ class DField(BaseField):
         msg: list[str] = []
 
         if show_description:
-            msg.append('%s%s [%s]%s' % (self.record_separator, self.tag, self.description, self.indicators))
+            msg.append('%s%s [%s]%s' % (self.field_separator, self.tag, self.description, self.indicators))
         else:
-            msg.append('%s%s%s' % (self.record_separator, self.tag, self.indicators))
+            msg.append('%s%s%s' % (self.field_separator, self.tag, self.indicators))
 
         for s in self.subfields:
             msg.append(s.__repr__(show_description))
 
-        return self.field_separator.join(msg)
+        return self.subfield_separator.join(msg)
 
     def addSubField(self, tag: str, value: str):
         repeatable: bool = True
@@ -164,7 +164,6 @@ class DField(BaseField):
     def __json__(self):
         return {
             'tag': self.tag,
-            'description': self.description,
             'indicators': self.indicators,
             'subfields': [sf.__json__() for sf in self.subfields]
         }
@@ -174,8 +173,8 @@ class DField(BaseField):
 class MarcDto:
     _cfields: list[CField] = field(default_factory=list)
     _dfields: list[DField] = field(default_factory=list)
-    _record_separator: str = ' '
     _field_separator: str = ' '
+    _subfield_separator: str = ' '
 
     def __init__(self):
         self._cfields = []
@@ -197,8 +196,11 @@ class MarcDto:
 
         return '\n'.join(msg)
 
-    def __len__(self) -> int:
-        return len(self._cfields) + len(self._dfields)
+    def __len__(self, count_characters: bool = False) -> int:
+        if count_characters:
+            return sum([len(f) for f in self._cfields]) + sum([len(f) for f in self._dfields])
+        else:
+            return len(self._cfields) + len(self._dfields)
 
     def __json__(self):
         jslist = []
@@ -211,17 +213,17 @@ class MarcDto:
 
         return json.dumps(jslist)
 
-    def set_separators(self, record_separator: str, field_separator: str):
-        if record_separator == '' or field_separator == '':
+    def set_separators(self, field_separator: str, subfield_separator: str):
+        if field_separator == '' or subfield_separator == '':
             return
 
-        self._record_separator = record_separator
         self._field_separator = field_separator
+        self._subfield_separator = subfield_separator
 
         for cf in self._cfields:
-            cf.set_separators(record_separator, field_separator)
+            cf.set_separators(field_separator, subfield_separator)
         for df in self._dfields:
-            df.set_separators(record_separator, field_separator)
+            df.set_separators(field_separator, subfield_separator)
 
 
     def as_list(self, show_description: bool = False) -> list[str]:
@@ -233,7 +235,7 @@ class MarcDto:
 
     def __create_cfield(self, tag: str, description: str, data: str) -> CField:
         cf = CField(tag=tag, description=description, data=data)
-        cf.set_separators(self._record_separator, self._field_separator)
+        cf.set_separators(self._field_separator, self._subfield_separator)
         return cf
 
 
@@ -253,7 +255,7 @@ class MarcDto:
                     subs.append(sf)
 
         df = DField(tag=tag, description=definition.description, indicators=field_indicators, subfields=subs)
-        df.set_separators(self._record_separator, self._field_separator)
+        df.set_separators(self._field_separator, self._subfield_separator)
         return df
 
     def create_field(self, tag: str, indicators: str = '', data: str = '',
