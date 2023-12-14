@@ -356,3 +356,22 @@ class TestMarcDto:
             cf = CField(tag='', description='test', data='?')
 
 
+    def test_character_length_of_subfields(self):
+        dto = MarcDto()
+        md = MarcDictionary()
+
+        tags = md.get_field_tags()
+        tags = [tag for tag in tags if int(tag) % 7 == 0]
+
+        for tag in tags:
+            field = dto.create_field(tag=tag, data=tag)
+
+            if field.field_type == 'd':
+                subfields = md.get_valid_subfields_for_field(tag=tag)
+
+                for sf in subfields:
+                    field.addSubField(sf.tag, 'subfield %s for field %s' % (sf.tag, tag))
+
+            dto.insert_field(field)
+
+        assert dto.__len__(True) > 0

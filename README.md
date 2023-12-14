@@ -79,7 +79,7 @@ Which results in:
 In order to change the default record-separator (^^) and field-seperator (^_), one can
 call set_separators before printing the MarcDto instance
 
-```
+```python
 dto.set_separators(field_separator='  ', subfield_separator=' $')
 
 print(dto)
@@ -171,7 +171,7 @@ A **MarcException** is raised when:
 
   returns json representation of the record
   
-  ```json
+  ```text
   [
 	{
 		'tag': <tag>,
@@ -234,7 +234,7 @@ A **MarcException** is raised when:
 - __json__()
 
   returns the json representation of the field as:
-  ```json
+  ```text
   {
      'tag': <tag>,
 	 'data': <data>
@@ -257,7 +257,7 @@ A **MarcException** is raised when:
 
   returns the json representation of the field as:
   
-  ```json
+  ```text
   {
 	  'tag': <tag>,
 	  'indicators': <indicators>
@@ -305,7 +305,7 @@ This class is primarily used in the MarcDictionary and used to instantiate CFiel
   depending on the fieldtype as
   - 'c':
   
-  ```json
+  ```text
   {
 	'tag': <tag>,
 	'fieldtype': <fieldtype>,
@@ -313,7 +313,7 @@ This class is primarily used in the MarcDictionary and used to instantiate CFiel
   }
   ```
   - 'd':
-  ```json
+  ```text
   {
 	'tag': <tag>,
 	'fieldtype': <fieldtype>,
@@ -360,7 +360,7 @@ This class is primarily used in the MarcDictionary and used to instantiate CFiel
 
   returns the json representation of the current subfield
   
-  ```json
+  ```text
   {
 	'tag': <tag>,
 	'description': <description>,

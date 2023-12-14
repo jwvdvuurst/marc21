@@ -46,6 +46,9 @@ class BaseField:
         self.field_separator = '^^'
         self.subfield_separator = '^_'
 
+    def __len__(self):
+        return 0
+
     def __del__(self):
         del self.tag
         del self.description
@@ -91,6 +94,9 @@ class CField(BaseField):
 
         return self.subfield_separator.join(msg)
 
+    def __len__(self):
+        return len(self.tag) + len(self.data)
+
     def __json__(self):
         return {
             'tag': self.tag,
@@ -133,6 +139,9 @@ class DField(BaseField):
             msg.append(s.__repr__(show_description))
 
         return self.subfield_separator.join(msg)
+
+    def __len__(self):
+        return len(self.tag) + len(self.indicators) + sum(len(sf) for sf in self.subfields)
 
     def addSubField(self, tag: str, value: str):
         repeatable: bool = True

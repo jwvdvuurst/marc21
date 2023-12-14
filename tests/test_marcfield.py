@@ -1,4 +1,5 @@
-from marc21 import MarcField, SubField
+import pytest
+from marc21 import MarcField, SubField, MarcDictionary, MarcException
 
 
 class TestMarcField:
@@ -386,5 +387,100 @@ class TestMarcField:
         assert field.subfields[1].description == subfield2_description
 
         del field
+
+    def test_testing_for_present_subfield(self):
+        md = MarcDictionary()
+
+        field = md.get_field_by_tag(tag='245', copy=True)
+
+        assert field is not None
+
+        result = field.is_subfield_present(tag='a')
+
+        assert result == True
+
+
+    def test_testing_for_not_present_subfield(self):
+        md = MarcDictionary()
+
+        field = md.get_field_by_tag(tag='245', copy=True)
+
+        assert field is not None
+
+        result = field.is_subfield_present(tag='d')
+
+        assert result == False
+
+
+    def test_testing_for_subfield_in_empty_list_of_subfields(self):
+        field = MarcField(tag='999', fieldtype='d', repeatable=True, description='Test')
+
+        assert field is not None
+
+        result = field.is_subfield_present(tag='a')
+
+        assert result == False
+
+
+    def test_testing_for_subfield_with_empty_tag(self):
+        field = MarcField(tag='999', fieldtype='d', repeatable=True, description='Test')
+
+        assert field is not None
+
+        result = field.is_subfield_present(tag='')
+
+        assert result == False
+
+    def test_add_duplicate_non_repeatable_subfield(self):
+        md = MarcDictionary()
+
+        field = md.get_field_by_tag(tag='245', copy=True)
+
+        assert field is not None
+
+        with pytest.raises(MarcException):
+            field.add_SubField(tag='a', repeatable=False, description='Test')
+
+
+    def test_add_invalid_subfield(self):
+        md = MarcDictionary()
+
+        field = md.get_field_by_tag(tag='245', copy=True)
+
+        assert field is not None
+
+        with pytest.raises(MarcException):
+            field.add_SubField(tag='', repeatable=True, description='Test')
+
+    def test_convert_control_field_to_json(self):
+        tag = '003'
+        md = MarcDictionary()
+
+        field = md.get_field_by_tag(tag=tag, copy=True)
+
+        assert field is not None
+
+        json = field.__json__()
+
+        assert len(json) > 0
+        assert json['tag'] == tag
+
+    def test_convert_data_field_to_json(self):
+        tag = '245'
+        md = MarcDictionary()
+
+        field = md.get_field_by_tag(tag=tag, copy=True)
+
+        assert field is not None
+
+        json = field.__json__()
+
+        assert len(json) > 0
+        assert json['tag'] == tag
+
+    def test_create_MarcField_with_invalid_type(self):
+        with pytest.raises(MarcException):
+            MarcField(tag='999', fieldtype='z', repeatable=True, description='Test')
+
 
 

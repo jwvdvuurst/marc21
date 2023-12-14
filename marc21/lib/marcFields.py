@@ -35,6 +35,9 @@ class SubField:
     def __copy__(self):
         return SubField(self.tag, self.repeatable, self.description, self.value)
 
+    def __len__(self):
+        return len(self.tag) + len(self.value)
+
     def __json__(self):
         return {
             'tag': self.tag,
@@ -114,16 +117,16 @@ class MarcField:
         return mf
 
     def __json__(self):
-        if self.fieldtype == 'c':
+        if self.type == 'c':
             return {
                 'tag': self.tag,
-                'fieldtype': self.fieldtype,
+                'type': self.type,
                 'description': self.description
             }
         else:
             return {
                 'tag': self.tag,
-                'fieldtype': self.fieldtype,
+                'type': self.type,
                 'description': self.description,
                 'has_indicators': self.has_indicators,
                 'indicators': self.indicators,
@@ -173,7 +176,7 @@ class MarcField:
         if tag is None or tag == '':
             return False
 
-        if self.subfields is None:
+        if self.subfields is None or self.subfields == []:
             return False
 
         for sf in self.subfields:
