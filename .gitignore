@@ -5,6 +5,8 @@
 /build
 /tests/__pycache__
 /__pycache__
+marc21/__pycache__
+marc21/lib/__pycache__
 
 .coverage
 

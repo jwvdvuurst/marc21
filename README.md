@@ -129,7 +129,7 @@ This library supports the addition of new fields and the alteration of existing 
 
 ### Exceptions
 
-A **MarcException** is raised when:
+A **MarcException** is raised when: 
 
 - You try to add a subfield without a tag
 - You try to add a subfield without a value
