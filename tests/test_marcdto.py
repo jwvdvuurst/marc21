@@ -1,8 +1,13 @@
-
+# -*- coding: utf-8 -*-
+"""
+    Tests for the MarcDto class.
+    This module contains unit tests for the MarcDto class, which is responsible for managing MARC records.
+"""
 import pytest
 
-from marc21 import MarcDto, MarcException, CField, DField, SubField, MarcField, add_field_to_list, get_dictionary, add_additional_fields_to_list, MarcDictionary
-
+from marc21 import MarcDto, MarcException, CField, DField, SubField, MarcField, add_field_to_list, get_dictionary, add_additional_fields_to_list, MarcDictionary, load_marc21_from_text
+from marc21.lib.marcException import MarcSubfieldException, MarcInvalidTagException, MarcFieldTypeException
+from marc21.lib.marcFields import MarcField
 
 class TestMarcDto:
 
@@ -375,3 +380,39 @@ class TestMarcDto:
             dto.insert_field(field)
 
         assert dto.__len__(True) > 0
+
+    def test_create_valid_record_from_text(self):
+        message = "^^0016043368\n" + \
+                "^^00520230117182517.0\n" + \
+                "^^008770218s1818    enk           000 1 eng\n" + \
+                "^^010  $a   53051218\n" + \
+                "^^035  $a(OCoLC)2748084\n" + \
+                "^^040  $aDLC$beng$cGEU$dOCoLC$dDLC\n" + \
+                "^^042  $apremarc\n" + \
+                "^^05000$aPR5397$b.F7 1818\n" + \
+                "^^1001$aShelley, Mary Wollstonecraft,$d1797-1851.\n" + \
+                "^^24510$aFrankenstein; or, The modern Prometheus.\n" + \
+                "^^24630$aFrankenstein\n" + \
+                "^^24630$aModern Prometheus\n" + \
+                "^^260  $aLondon,$bPrinted for Lackington, Hughes, Harding, Mavor, &amp; Jones,$c1818.\n" + \
+                "^^300  $a3 v.$c19 cm.\n" + \
+                "^^561  $aYale Univ. exchange, 11-28-52, Rec. 4-23-53.$5DLC\n" + \
+                ("^^85641$3Page view volume 1$drbc0001$f2018gen51218v1"
+                 "$uhttps://hdl.loc.gov/loc.rbc/General.51218v1.1\n") + \
+                ("^^85641$3Page view volume 2$drbc0001$f2018gen51218v2"
+                 "$uhttps://hdl.loc.gov/loc.rbc/General.51218v2.1\n") + \
+                ("^^85641$3Page view volume 3$drbc0001$f2018gen51218v3"
+                 "$uhttps://hdl.loc.gov/loc.rbc/General.51218v3.1\n")
+
+        try:
+            dto = load_marc21_from_text(text=message, field_separator='^^', subfield_separator="$")
+            assert dto is not None
+            assert dto.__len__() == 18
+            print(dto.__len__())
+        except MarcException as e:
+            print('error in test_create_valid_record_from_text %s' % e.__repr__())
+            print(message)
+
+
+
+

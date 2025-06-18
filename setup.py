@@ -2,15 +2,15 @@ from setuptools import setup, find_packages
 
 setup(
     name='marc21',
-    version='0.3.6',
-    description='library to create bibliographic marc21 records',
-    url='https://github.com/jwvdvuurst/marc21',
+    version='0.5.0',
+    description='library to create bibliographic MARC21 records',
+    url='https://github.com/jwvdvuurst/marc21.git',
     author='John van der Vuurst',
     author_email='jwvdvuurst@gmail.com',
-    license='',
+    license='EUPL-1.1',
     packages=find_packages(include=['marc21', 'marc21.*']),
-    package_dir={'Package': 'marc21'},
-    requires=[],
+    install_requires=[],
+    python_requires='>=3.10',
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',

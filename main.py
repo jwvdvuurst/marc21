@@ -1,11 +1,10 @@
-from marc21 import *
-
-
+from marc21 import load_marc21_from_text, MarcDto, get_dictionary
 
 def main():
-    print(get_dictionary(True))
+    print("Dictionary: \n%s" % get_dictionary(True))
 
     # create marc21 data transfer object
+    print("\nCreate new MARC record\n")
     dto = MarcDto()
 
     # add the control fields  (please note when outputting the record the fields gets sorted)
@@ -45,45 +44,29 @@ def main():
     # when the record is finished, it can be printed
 
     # print(dto.set_separators(subfield_separator=chr(30), subfield_separator=chr(31)))
-    print(dto.__repr__(True))
+    print("\nPrint MARC record without descriptions: \n%s\n" % dto.__repr__(False))
+    print("\nPrint MARC record with descriptions: \n%s\n" % dto.__repr__(True))
 
+    print("\nChange the separators\n")
     dto.set_separators(field_separator=chr(30), subfield_separator=chr(31))
-    print(dto)
+    print("\nPrint MARC record with the separators: \n%s\n" % dto.__repr__(False))
 
-    # print(get_dictionary(True, '871'))
+    print("\nSave MARC record to string\n")
+    message=repr(dto)
 
-    #
-    # mf = MarcField(tag='905', type='d', repeatable=False, description='Address')
-    # sf = SubField(tag='a', repeatable=False, description='country')
-    # mf.add_SubField(new_sf=sf)
-    # sf = SubField(tag='b', repeatable=False, description='city')
-    # mf.add_SubField(new_sf=sf)
-    #
-    # add_field_to_list(mf)
-    #
-    # add_field_to_list(MarcField(tag='908', type='d', repeatable=True, description='Fictional Character', subfields=[
-    #     SubField(tag='a', repeatable=False, description='Name'),
-    #     SubField(tag='b', repeatable=True, description='Characterization')
-    # ]))
-    #
-    # add_additional_fields_to_list( [
-    #     MarcField('400', 'd', True, 'alternative name', True, '  ', '', [
-    #         SubField('a', False, 'full name'),
-    #         SubField('3', False, 'name use'),
-    #         SubField('2', False, 'source')
-    #     ]),
-    #     MarcField('671', 'd', True, 'title URLs', True, '  ', '', [
-    #         SubField('g', False, 'type'),
-    #         SubField('u', False, 'url'),
-    #         SubField('2', False, 'source')
-    #     ]),
-    #     MarcField('902', 'd', True, 'ISSN', True, '  ', '', [
-    #         SubField('a', False, 'ISSN'),
-    #         SubField('2', False, 'source')
-    #     ])
-    # ])
-    #
-    # print(get_dictionary(True))
+    print("\nLoad new MARC record from the string\n")
+    dto = load_marc21_from_text(message, field_separator=chr(30), subfield_separator=chr(31))
+
+    print("\nLoaded MARC record: \n%s\n" % dto.__repr__(False))
+
+    print("\nChange the separators\n")
+    dto.set_separators(field_separator='^^', subfield_separator='^_')
+
+    print("\nPrint MARC record with the separators: \n%s\n" % dto.__repr__(False))
+
+    print("\nPrint MARC record as json: \n%s\n" % dto.__json__())
+
+    print("\nPrint MARC record as xml: \n%s\n" % dto.__xml__())
 
 
 if __name__ == '__main__':

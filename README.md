@@ -368,6 +368,59 @@ This class is primarily used in the MarcDictionary and used to instantiate CFiel
   }
   ```
   
+## ISO 2709 Support
+
+You can serialize a `MarcDto` to ISO 2709 (binary MARC21 format) and back using the provided functions:
+
+### 🔄 Convert to ISO 2709
+```python
+from marc21 import MarcDto, to_iso2709
+
+record = MarcDto()
+record.insert_field(record.create_field(tag="001", data="123456"))
+...
+binary = to_iso2709(record)
+with open("record.iso2709", "wb") as f:
+    f.write(binary)
+```
+
+### 🔁 Load from ISO 2709
+```python
+from marc21 import from_iso2709
+
+with open("record.iso2709", "rb") as f:
+    binary = f.read()
+record = from_iso2709(binary)
+print(record.to_string())
+```
+
+---
+
+## MARCXML Support
+
+The library can also generate and read MARCXML format.
+
+### 🔄 Convert to MARCXML
+```python
+from marc21 import to_marcxml
+
+xml_string = to_marcxml(record)
+print(xml_string)
+```
+
+### 🔁 Load from MARCXML
+```python
+from marc21 import from_xml
+
+record = from_xml(xml_string)
+print(record.to_string())
+```
+
+---
+
+Both formats support full round-trip conversion, and are verified via unit tests for integrity. These functions are especially useful for interoperability with systems like library catalogs, OAI-PMH services, and archival platforms.
+
+
   
 ## Contributing
 
@@ -383,7 +436,8 @@ Add functionality to:
 ## Contact
 
 - Author: John van der Vuurst
-- Email: JWvdVuurst@gmail.com
+- Email (@OCLC)   : vdvuursj@oclc.org
+- Email (external): JWvdVuurst@gmail.com
 
 ## Appendix - the current default dictionary
 

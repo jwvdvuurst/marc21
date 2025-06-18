@@ -1,8 +1,9 @@
+import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from typing import Optional
 
 # local imports
-from .marcException import MarcException
+from .marcException import MarcSubfieldException, MarcUnknownFieldTypeException, MarcSubfieldNotRepeatableException
 
 @dataclass(init=False, eq=True, order=True)
 class SubField:
@@ -15,22 +16,21 @@ class SubField:
     value: str = ''
 
     def __init__(self, tag: str = '', repeatable: bool = True, description: str = '', value: str = 'dummy'):
-        if tag == '':
-            raise MarcException('Subfield without a tag encountered')
-
-        if value == '':
-            raise MarcException('Subfield without value encountered')
+        if tag == '' or value == '':
+            raise MarcSubfieldException(tag='', subfield=tag, value=value, reason='')
 
         self.tag = tag
         self.repeatable = repeatable
         self.description = description
         self.value = value
 
-    def __repr__(self, show_description: bool = False):
-        if show_description:
-            return '%s [%s] %s' % (self.tag, self.description, self.value)
-        else:
-            return '%s%s' % (self.tag, self.value)
+    def __repr__(self, show_description: bool = False) -> str:
+        tag = getattr(self, 'tag', '<?>')
+        value = getattr(self, 'value', '<?>')
+        description = getattr(self, 'description', '')
+        if show_description and description:
+            return f'{tag} [{description}] {value}'
+        return f'{tag}{value}'
 
     def __copy__(self):
         return SubField(self.tag, self.repeatable, self.description, self.value)
@@ -44,6 +44,12 @@ class SubField:
             'description': self.description,
             'value': self.value
         }
+
+    def __xml__(self, root : ET.Element):
+        sf = ET.SubElement(root, 'subfield', code=self.tag, description=self.description)
+        sf.text = self.value
+
+        return sf
 
 
 @dataclass(init=False)
@@ -81,7 +87,7 @@ class MarcField:
         elif self.type == 'd':
             self.has_indicators = has_indicators
         else:
-            raise MarcException('Field \'%s\' has unknown type \'%s\'' % (tag, fieldtype))
+            raise MarcUnknownFieldTypeException(tag=tag, type=fieldtype, reason='')
 
     def __del__(self):
         if self.type == 'c':
@@ -141,14 +147,14 @@ class MarcField:
         """
         if new_sf is None:
             if tag == '':
-                raise MarcException('Insufficient data supplied to create a new subfield for tag %s' % self.tag)
+                raise MarcSubfieldException(tag=self.tag, subfield='', value='', reason='')
 
             new_sf = SubField(tag, repeatable, description)
 
         if not new_sf.repeatable:
             for sf in self.subfields:
                 if sf.tag == new_sf.tag:
-                    raise MarcException('Non-repeatable subfield %s repeated for tag %s' % (new_sf.tag, self.tag))
+                    raise MarcSubfieldNotRepeatableException(subfield=new_sf.tag, tag=self.tag, extra_reason='')
 
         self.subfields.append(new_sf)
 
