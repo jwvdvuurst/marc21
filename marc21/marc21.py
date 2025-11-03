@@ -345,9 +345,10 @@ class MarcDto:
         for s in subfields:
             for d in definition.subfields:
                 if d.tag == s.tag:
-                    sf = d
-                    sf.value = s.value
-                    subs.append(sf)
+                    # copy the dictionary subfield definition to avoid mutating shared state
+                    sf_copy = d.__copy__()
+                    sf_copy.value = s.value
+                    subs.append(sf_copy)
 
         df = DField(tag=tag, description=definition.description, indicators=field_indicators, subfields=subs)
         df.set_separators(self._field_separator, self._subfield_separator)
@@ -405,6 +406,115 @@ class MarcDto:
 
         return self
 
+    # Convenience APIs
+    def get_value(self, tag: str, code: str | None = None) -> Optional[str]:
+        """
+        Get the first matching value for a tag.
+        - Control fields: return data when code is None
+        - Data fields: return first subfield value matching code
+        """
+        if code is None:
+            for cf in self._cfields:
+                if cf.tag == tag:
+                    return cf.data
+            return None
+        else:
+            for df in self._dfields:
+                if df.tag == tag:
+                    for sf in df.subfields:
+                        if sf.tag == code:
+                            return sf.value
+            return None
+
+    def list_values(self, tag: str, code: str | None = None) -> list[str]:
+        """
+        List values for a tag (and optional subfield code).
+        """
+        values: list[str] = []
+        if code is None:
+            for cf in self._cfields:
+                if cf.tag == tag:
+                    values.append(cf.data)
+        else:
+            for df in self._dfields:
+                if df.tag == tag:
+                    for sf in df.subfields:
+                        if sf.tag == code:
+                            values.append(sf.value)
+        return values
+
+    def set_value(self, tag: str, value: str, code: str | None = None, indicators: str = '') -> "MarcDto":
+        """
+        Set or create a value.
+        - Control fields (no code): set data.
+        - Data fields (with code): replace first if non-repeatable, else add.
+        """
+        if code is None:
+            # control field
+            for cf in self._cfields:
+                if cf.tag == tag:
+                    cf.data = value
+                    return self
+            # create new
+            fld = self.create_field(tag=tag, data=value)
+            self.insert_field(fld)
+            return self
+        else:
+            # data field
+            # check repeatability of the subfield in dictionary
+            repeatable = True
+            valid_sf = marc_dict.get_valid_subfields_for_field(tag=tag)
+            for vsf in valid_sf:
+                if vsf.tag == code:
+                    repeatable = vsf.repeatable
+                    break
+
+            for df in self._dfields:
+                if df.tag == tag:
+                    if not repeatable:
+                        for sf in df.subfields:
+                            if sf.tag == code:
+                                sf.value = value
+                                return self
+                    # add as additional subfield
+                    df.addSubField(code, value)
+                    return self
+
+            # no existing field; create one
+            fld = self.create_field(tag=tag, indicators=indicators, subfields=[SubField(tag=code, value=value)])
+            self.insert_field(fld)
+            return self
+
+    def add_subfield(self, tag: str, code: str, value: str, indicators: str = '') -> "MarcDto":
+        """
+        Add a subfield to the first data field with tag, creating the field if needed.
+        """
+        for df in self._dfields:
+            if df.tag == tag:
+                df.addSubField(code, value)
+                return self
+
+        fld = self.create_field(tag=tag, indicators=indicators, subfields=[SubField(tag=code, value=value)])
+        self.insert_field(fld)
+        return self
+
+    def remove(self, tag: str, code: str | None = None) -> "MarcDto":
+        """
+        Remove fields or subfields.
+        - If code is None: remove all fields with the tag
+        - If code is provided: remove matching subfields; remove field if empty
+        """
+        if code is None:
+            self._cfields = [cf for cf in self._cfields if cf.tag != tag]
+            self._dfields = [df for df in self._dfields if df.tag != tag]
+            return self
+
+        for df in self._dfields:
+            if df.tag == tag:
+                df.subfields = [sf for sf in df.subfields if sf.tag != code]
+        # drop empty data fields
+        self._dfields = [df for df in self._dfields if len(df.subfields) > 0]
+        return self
 def load_marc21_from_text(text: str, field_separator: str = '', subfield_separator: str = '') -> MarcDto:
     dto = MarcDto(field_separator=field_separator, subfield_separator=subfield_separator)
 
@@ -531,8 +641,8 @@ def from_marcxml(xml_string: str, extra_space:bool = False) -> MarcDto:
             subfields = []
             for sub in field.findall('marc:subfield', ns):
                 code = sub.attrib.get('code')
-                value = sub.text or ''
-                if code:
+                value = (sub.text or '').strip()
+                if code and value != '':
                     subfields.append(SubField(tag=code, value=value))
             dto.insert_field(dto.create_field(tag=tag, indicators=indicators, subfields=subfields))
 

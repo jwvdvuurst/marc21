@@ -85,6 +85,26 @@ dto.set_separators(field_separator='  ', subfield_separator=' $')
 print(dto)
 ```
 
+### New in 0.6: Convenience helpers
+
+Quickly read and modify values without manual field traversal:
+
+```python
+# read values
+dto.get_value('001')                 # control field data
+dto.get_value('245', 'a')            # first 245 $a
+dto.list_values('650', 'a')          # all 650 $a
+
+# set or add
+dto.set_value('001', '3303902')      # set control field
+dto.set_value('245', '1984', 'a')    # set first 245 $a (replaces if non-repeatable)
+dto.add_subfield('245', 'b', 'a novel')
+
+# remove
+dto.remove('650', 'a')               # remove all 650 $a subfields
+dto.remove('246')                    # remove all 246 fields
+```
+
 ### extending the dictionary
 
 The marc21 standard reserved the 9xx range of fields for custom-fields.

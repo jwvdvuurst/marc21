@@ -8,6 +8,7 @@ from .marcException import MarcException
 
 class MarcDictionary:
     _FIELDS: list[MarcField]
+    _FIELD_MAP: dict[str, MarcField]
 
     def __init__(self):
         self._FIELDS = [
@@ -3069,6 +3070,8 @@ class MarcDictionary:
                 SubField('a', False, 'Content of non-MARC field'),
                 SubField('2', False, 'Source of data')])
         ]
+        # Build fast tag -> field map for O(1) lookup
+        self._FIELD_MAP = {f.tag: f for f in self._FIELDS}
 
     def add_field_to_list(self, field: MarcField) -> None:
         """
@@ -3078,6 +3081,7 @@ class MarcDictionary:
             field (MarcField): The field to be added.
         """
         self._FIELDS.append(field)
+        self._FIELD_MAP[field.tag] = field
 
     def add_additional_fields_to_list(self, fields: list[MarcField]) -> None:
         """
@@ -3101,18 +3105,17 @@ class MarcDictionary:
         Returns:
             set[str]: The set of field tags.
         """
-        tags: list[str] = [mf.tag for mf in self._FIELDS]
+        tags: list[str] = list(self._FIELD_MAP.keys())
 
         return tags
 
     def get_field_by_tag(self, tag: str = '', copy: bool = True) -> MarcField:
-        if tag in self.get_field_tags():
-            for mf in self._FIELDS:
-                if mf.tag == tag:
-                    if copy:
-                        return mf.__copy__()
-                    else:
-                        return mf
+        if tag in self._FIELD_MAP:
+            mf = self._FIELD_MAP[tag]
+            if copy:
+                return mf.__copy__()
+            else:
+                return mf
 
     def add_additional_subfield_to_field_in_list(self, tag: str, subfield: SubField) -> None:
         """
@@ -3191,36 +3194,27 @@ class MarcDictionary:
                     f.type = 'd'
                 else:
                     f.type = 'c'
-
+                # _FIELD_MAP already points to the same object; no update needed
                 break
 
     def switch_repeatability_of_field(self, tag: str):
         for f in self._FIELDS:
             if f.tag == tag:
                 f.repeatable = not f.repeatable
+                # _FIELD_MAP already points to the same object; no update needed
 
     def validate_field(self, tag: str, fieldtype: str):
-        valid = False
-
-        for f in self._FIELDS:
-            if f.tag == tag and f.type == fieldtype:
-                valid = True
-                break
-
-        return valid
+        f = self._FIELD_MAP.get(tag)
+        return bool(f and f.type == fieldtype)
 
     def get_valid_subfields_for_field(self, tag: str) -> list[SubField]:
-        subfields = []
-        for f in self._FIELDS:
-            if f.tag == tag and f.type == 'd':
-                subfields = f.subfields
-                break
-        return subfields
+        f = self._FIELD_MAP.get(tag)
+        if f and f.type == 'd':
+            return f.subfields
+        return []
 
     def find_definition_for_field(self, tag: str) -> Optional[MarcField]:
-        definitions = [field for field in self._FIELDS if field.tag == tag]
-
-        if len(definitions) == 0 or len(definitions) > 1:
+        f = self._FIELD_MAP.get(tag)
+        if not f:
             return None
-
-        return definitions[0].__copy__()
+        return f.__copy__()
