@@ -46,7 +46,7 @@ class SubField:
         }
 
     def __xml__(self, root : ET.Element):
-        sf = ET.SubElement(root, 'subfield', code=self.tag, description=self.description)
+        sf = ET.SubElement(root, 'subfield', {'code': self.tag, 'description': self.description})
         sf.text = self.value
 
         return sf

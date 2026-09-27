@@ -12,6 +12,7 @@ class MarcDictionary:
 
     def __init__(self):
         self._FIELDS = [
+            MarcField('000', 'c', False, 'Leader', False, '', '', []),
             MarcField('001', 'c', False, 'Control Number', False, '', '', []),
             MarcField('003', 'c', False, 'Control Number Identifier', False, '', '', []),
             MarcField('005', 'c', False, 'Date and Time of Latest Transaction', False, '', '', []),

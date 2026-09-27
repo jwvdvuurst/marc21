@@ -1,6 +1,11 @@
 # marc21 module
 
-marc21 is a Python library for writing marc21 bibliographic records.
+marc21 is a Python library for reading and writing MARC 21 bibliographic records.
+
+The embedded dictionary is a hand-maintained bibliographic subset. It is not a
+complete or current MARC 21 Authorities dictionary; authority records require
+an authority-specific, versioned data source before they can be validated
+reliably. Local `9XX` fields can be added through the dictionary extension API.
 
 marc is an acronym for **MA**chine **R**eadable **C**atalogue.
 
@@ -104,6 +109,36 @@ dto.add_subfield('245', 'b', 'a novel')
 dto.remove('650', 'a')               # remove all 650 $a subfields
 dto.remove('246')                    # remove all 246 fields
 ```
+
+### Validation
+
+`MarcDto.validate()` returns all structural errors found in a record without
+raising an exception. It checks field and subfield definitions, repeatability,
+indicator length, empty values, and the MARC leader length when field `000` is
+present. It does not implement cataloging-policy rules such as RDA required
+elements or indicator-value semantics.
+
+```python
+errors = dto.validate()
+if errors:
+    raise ValueError('\n'.join(errors))
+```
+
+### BIBFRAME type mapping
+
+`bibframe_types_for()` maps MARC tags or field objects to applicable BIBFRAME
+2 resource type IRIs. The mapping table is intentionally partial and identifies
+resource types only; it is not a MARC-to-BIBFRAME RDF converter.
+
+```python
+from marc21 import bibframe_types_for
+
+bibframe_types_for('245', '100')
+# {'http://id.loc.gov/ontologies/bibframe/Title', ...}
+```
+
+Sources: [Library of Congress MARC 21](https://www.loc.gov/marc/bibliographic/)
+and [BIBFRAME 2 model](https://www.loc.gov/bibframe/docs/bibframe2-model.html).
 
 ### extending the dictionary
 

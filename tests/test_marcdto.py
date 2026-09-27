@@ -5,11 +5,50 @@
 """
 import pytest
 
-from marc21 import MarcDto, MarcException, CField, DField, SubField, MarcField, add_field_to_list, get_dictionary, add_additional_fields_to_list, MarcDictionary, load_marc21_from_text
+from marc21 import MarcDto, MarcException, CField, DField, SubField, MarcField, add_field_to_list, get_dictionary, add_additional_fields_to_list, MarcDictionary, load_marc21_from_text, from_iso2709, to_iso2709, from_marcxml, to_marcxml
 from marc21.lib.marcException import MarcSubfieldException, MarcInvalidTagException, MarcFieldTypeException
 from marc21.lib.marcFields import MarcField
 
 class TestMarcDto:
+
+    def test_validate_reports_structural_errors(self):
+        dto = MarcDto()
+        dto._dfields.append(DField('245', 'Title Statement', '1', [SubField('a', value='Title')]))
+
+        assert dto.validate() == ['245: data field must have exactly two indicators']
+
+    def test_iso2709_round_trip_preserves_leader_metadata(self):
+        dto = MarcDto()
+        leader = '00000cas a2200000   4500'
+        dto.insert_field(dto.create_field('000', data=leader))
+        dto.insert_field(dto.create_field('001', data='12345'))
+
+        restored = from_iso2709(to_iso2709(dto))
+
+        assert restored.get_value('000')[5:12] == leader[5:12]
+        assert restored.get_value('001') == '12345'
+
+    def test_marcxml_round_trip_preserves_fields(self):
+        dto = MarcDto()
+        dto.insert_field(dto.create_field('001', data='12345'))
+        dto.insert_field(dto.create_field('245', indicators='10', subfields=[SubField('a', value='Title')]))
+
+        restored = from_marcxml(to_marcxml(dto))
+
+        assert restored.get_value('001') == '12345'
+        assert restored.get_value('245', 'a') == 'Title'
+
+    def test_create_field_rejects_unknown_subfields(self):
+        dto = MarcDto()
+
+        with pytest.raises(MarcException):
+            dto.create_field('245', subfields=[SubField('z', value='Not valid for title')])
+
+    def test_add_subfield_rejects_control_fields(self):
+        dto = MarcDto()
+
+        with pytest.raises(MarcException, match='control field'):
+            dto.add_subfield('001', 'a', 'not allowed')
 
     #  Creating a new instance of MarcDto should initialize empty lists for _cfields and _dfields.
     def test_new_instance_initializes_empty_lists(self):

@@ -116,7 +116,7 @@ class CField(BaseField):
         }
 
     def __xml__(self, record: ET.Element):
-        cf = ET.SubElement(record,'controlfield', tag=self.tag)
+        cf = ET.SubElement(record, 'controlfield', {'tag': self.tag})
         cf.text = self.data
         return cf
 
@@ -194,7 +194,11 @@ class DField(BaseField):
         }
 
     def __xml__(self, record: ET.Element):
-        df = ET.SubElement(record, 'datafield', tag = self.tag, ind1 = self.indicators[0], ind2 = self.indicators[1])
+        df = ET.SubElement(record, 'datafield', {
+            'tag': self.tag,
+            'ind1': self.indicators[0],
+            'ind2': self.indicators[1]
+        })
 
         for sf in self.subfields:
             sf.__xml__(df)
@@ -264,10 +268,11 @@ class MarcDto:
 
         record = ET.SubElement(root, 'record')
         leader = ET.SubElement(record, 'leader')
-        leader.text = '00000np a 4500'
+        leader.text = self.get_value('000') or '00000nam a2200000   4500'
 
         for cf in self._cfields:
-            cf.__xml__(record)
+            if cf.tag != '000':
+                cf.__xml__(record)
         for df in self._dfields:
             df.__xml__(record)
 
@@ -328,6 +333,47 @@ class MarcDto:
 
         return msg
 
+    def validate(self) -> list[str]:
+        """Return all record-level structural validation errors."""
+        errors: list[str] = []
+        fields_by_tag: dict[str, list[BaseField]] = {}
+
+        for marc_field in self._cfields + self._dfields:
+            fields_by_tag.setdefault(marc_field.tag, []).append(marc_field)
+            definition = marc_dict.find_definition_for_field(marc_field.tag)
+            if definition is None:
+                errors.append(f"{marc_field.tag}: unknown MARC field")
+                continue
+            if definition.type != marc_field.field_type:
+                errors.append(f"{marc_field.tag}: expected a {definition.type}-type field")
+                continue
+            if isinstance(marc_field, CField):
+                if marc_field.data == '':
+                    errors.append(f"{marc_field.tag}: control field data is empty")
+                if marc_field.tag == '000' and len(marc_field.data) != LEADER_LENGTH:
+                    errors.append("000: leader must contain exactly 24 characters")
+            else:
+                if len(marc_field.indicators) != 2:
+                    errors.append(f"{marc_field.tag}: data field must have exactly two indicators")
+                valid_subfields = {subfield.tag: subfield for subfield in definition.subfields}
+                seen_subfields: set[str] = set()
+                for subfield in marc_field.subfields:
+                    subfield_definition = valid_subfields.get(subfield.tag)
+                    if subfield_definition is None:
+                        errors.append(f"{marc_field.tag}${subfield.tag}: unknown subfield")
+                    elif not subfield_definition.repeatable and subfield.tag in seen_subfields:
+                        errors.append(f"{marc_field.tag}${subfield.tag}: subfield is not repeatable")
+                    if subfield.value == '':
+                        errors.append(f"{marc_field.tag}${subfield.tag}: subfield value is empty")
+                    seen_subfields.add(subfield.tag)
+
+        for tag, fields in fields_by_tag.items():
+            definition = marc_dict.find_definition_for_field(tag)
+            if definition is not None and not definition.repeatable and len(fields) > 1:
+                errors.append(f"{tag}: field is not repeatable")
+
+        return errors
+
     def __create_cfield(self, tag: str, description: str, data: str) -> CField:
         cf = CField(tag=tag, description=description, data=data)
         cf.set_separators(self._field_separator, self._subfield_separator)
@@ -343,12 +389,17 @@ class MarcDto:
 
         subs: list[SubField] = []
         for s in subfields:
+            found = False
             for d in definition.subfields:
                 if d.tag == s.tag:
                     # copy the dictionary subfield definition to avoid mutating shared state
                     sf_copy = d.__copy__()
                     sf_copy.value = s.value
                     subs.append(sf_copy)
+                    found = True
+                    break
+            if not found:
+                raise MarcInvalidSubfieldException(s.tag, tag, '')
 
         df = DField(tag=tag, description=definition.description, indicators=field_indicators, subfields=subs)
         df.set_separators(self._field_separator, self._subfield_separator)
@@ -489,6 +540,12 @@ class MarcDto:
         """
         Add a subfield to the first data field with tag, creating the field if needed.
         """
+        definition = marc_dict.find_definition_for_field(tag)
+        if definition is None:
+            raise MarcException(f"Attempt to add non-existing field '{tag}'")
+        if definition.type != 'd':
+            raise MarcException(f"Field '{tag}' is a control field and cannot contain subfields")
+
         for df in self._dfields:
             if df.tag == tag:
                 df.addSubField(code, value)
@@ -538,6 +595,7 @@ def from_iso2709(data: bytes, extra_space:bool = False) -> MarcDto:
         raise ValueError("Directory does not end with field terminator (0x1E).")
 
     dto = MarcDto(extra_space=extra_space)
+    dto.insert_field(dto.create_field(tag='000', data=leader))
     pos = 0
     while pos + DIRECTORY_ENTRY_LENGTH <= len(directory_data):
         entry = directory_data[pos:pos + DIRECTORY_ENTRY_LENGTH]
@@ -587,6 +645,8 @@ def to_iso2709(dto: MarcDto) -> bytes:
     current_position = 0
 
     for field in dto._cfields + dto._dfields:
+        if field.tag == '000':
+            continue
         tag = field.tag.encode('utf-8')
 
         if isinstance(field, CField):
@@ -611,11 +671,12 @@ def to_iso2709(dto: MarcDto) -> bytes:
     base_address = LEADER_LENGTH + len(directory)
     record_length = base_address + len(fields_data) + 1  # +1 for RECORD_TERMINATOR
 
-    leader = bytearray(' ' * LEADER_LENGTH, 'utf-8')
+    leader_data = dto.get_value('000') or '00000nam a2200000   4500'
+    if len(leader_data) != LEADER_LENGTH:
+        raise ValueError('MARC leader (field 000) must contain exactly 24 characters.')
+    leader = bytearray(leader_data, 'utf-8')
     leader[0:5] = f"{record_length:05}".encode('utf-8')
     leader[12:17] = f"{base_address:05}".encode('utf-8')
-    leader[20] = ord(' ')  # entry map default
-    leader[21] = ord(' ')  # entry map default
 
     return bytes(leader) + directory + fields_data + RECORD_TERMINATOR
 
@@ -634,6 +695,8 @@ def from_marcxml(xml_string: str, extra_space:bool = False) -> MarcDto:
         if field.tag.endswith('controlfield'):
             value = field.text or ''
             dto.insert_field(dto.create_field(tag=tag, data=value))
+        elif field.tag.endswith('leader'):
+            dto.insert_field(dto.create_field(tag='000', data=field.text or ''))
         elif field.tag.endswith('datafield'):
             ind1 = field.attrib.get('ind1', ' ')
             ind2 = field.attrib.get('ind2', ' ')
