@@ -140,6 +140,38 @@ bibframe_types_for('245', '100')
 Sources: [Library of Congress MARC 21](https://www.loc.gov/marc/bibliographic/)
 and [BIBFRAME 2 model](https://www.loc.gov/bibframe/docs/bibframe2-model.html).
 
+### BIBFRAME RDF/XML conversion
+
+`to_bibframe_rdfxml()` creates an RDF/XML graph containing a BIBFRAME Work and
+Instance. The resources are linked by `bf:hasInstance` and `bf:instanceOf`.
+The record's `001` supplies the URI suffix; use `base_uri` to select the URI
+base used by the output.
+
+```python
+from marc21 import MarcDto, to_bibframe_rdfxml
+
+record = MarcDto()
+record.insert_field(record.create_field('001', data='12345'))
+record.insert_field(record.create_field('245', indicators='10')
+                    .addSubField('a', 'Example title'))
+
+rdfxml = to_bibframe_rdfxml(record, base_uri='https://catalog.example/resources/')
+```
+
+The current converter implements statement mappings for `010`, `020`, `022`,
+`100`, `110`, `111`, `245`, `250`, `260`, `264`, `300`, `336`-`338`,
+`5XX`, `650`, `651`, `655`, `700`, `710`, `711`, and `856`. Other fields are
+omitted until they have a defined statement mapping. It is a focused Python
+implementation and does not claim complete parity with the Library of Congress
+MARC2BIBFRAME XSLT rules.
+
+The shape and initial mappings follow the internal OCLC BIBFRAME training and
+MARC2BF mapping guidance, which identifies Work/Instance separation, `245`
+title construction, `100` primary contribution, and `300` extent conversion;
+the OCLC BIBFRAME structure guidance identifies the LC
+[marc2bibframe2](https://github.com/lcnetdev/marc2bibframe2) rules as the
+current conversion specification.
+
 ### extending the dictionary
 
 The marc21 standard reserved the 9xx range of fields for custom-fields.

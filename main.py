@@ -1,4 +1,4 @@
-from marc21 import bibframe_types_for, load_marc21_from_text, MarcDto, get_dictionary
+from marc21 import load_marc21_from_text, MarcDto, get_dictionary, to_bibframe_rdfxml
 
 def main():
     print("Dictionary: \n%s" % get_dictionary(True))
@@ -68,7 +68,7 @@ def main():
 
     print("\nPrint MARC record as xml: \n%s\n" % dto.__xml__())
     
-    print("\nPrint MARC record BIBFRAME types: \n%s\n" % sorted(bibframe_types_for([*dto._cfields, *dto._dfields])))
+    print("\nPrint MARC record as BIBFRAME RDF/XML: \n%s\n" % to_bibframe_rdfxml(dto))
 
 
 if __name__ == '__main__':
